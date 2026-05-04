@@ -46,6 +46,7 @@ http {{
   uwsgi_temp_path {uwsgi_temp_path};
   scgi_temp_path {scgi_temp_path};
   
+  # 修改lua脚本加载路径
   lua_package_path "/usr/local/openresty/nginx/lua/?.lua;{scriptdir}/?.lua;;";
 
   lua_shared_dict dynredirmap 10m;
@@ -67,6 +68,7 @@ http {{
 		  dict:set("cmcd_collector_url", "{cmcd_collector_url}")
       end
 	  
+	  # cmcd_collector_url为空，强制手段添加值
 	  dict:set("cmcd_collector_url", "http://192.168.1.111:3000/cmcd/response-mode")
 
     end
@@ -92,42 +94,11 @@ http {{
     listen       [::]:{http_port} default_server;
     server_name  _;
     root         /usr/share/nginx/html;
+	
     error_page 404 /404.html;
     location = /404.html {{
     }}
-	
-	# =========================================================
-    # 🎯 把你的 CMCD 拦截器粘贴到这里！
-    # =========================================================
-    location ^~ /media/ {{
-        rewrite_by_lua_block {{
-            ngx.log(ngx.ERR, "INLINE REWRITE HIT v0.4: ", ngx.var.request_uri)
-            if cmcdHandle then
-                cmcdHandle.handle()
-            end
-        }}
-        
-        # 你的自定义逻辑：处理完 JSON 转换后直接返回 204
-        content_by_lua_block {{
-            ngx.exit(204)
-        }}
-    }}
-	
-	location ^~ /m4d/ {{
-        rewrite_by_lua_block {{
-            ngx.log(ngx.ERR, "INLINE REWRITE HIT v0.4: ", ngx.var.request_uri)
-            if cmcdHandle then
-                cmcdHandle.handle()
-            end
-        }}
-        
-        # 你的自定义逻辑：处理完 JSON 转换后直接返回 204
-        content_by_lua_block {{
-            ngx.exit(204)
-        }}
-    }}
-    # =========================================================
-	
+
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {{
     }}
