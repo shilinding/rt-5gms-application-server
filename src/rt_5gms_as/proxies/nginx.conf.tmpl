@@ -67,12 +67,23 @@ http {{
       -- 优先使用模板注入的 collector url，若为空，则提供默认的 fallback 地址
       local collector_url = "{cmcd_collector_url}"
 	  
-      collector_url = "http://192.168.1.111:3000/cmcd/response-mode"
-
+      -- 模板引擎可能产生的“假空值”文本
+      if collector_url == nil 
+         or collector_url == "" 
+         or collector_url == "{cmcd_collector_url}" 
+         or string.lower(collector_url) == "none" 
+         or string.lower(collector_url) == "null" 
+         or string.lower(collector_url) == "nil" then
+         
+        collector_url = "http://192.168.1.111:3000/cmcd/response-mode"
+      end
+      
       dict:set("cmcd_collector_url", collector_url)
+	  
+	  -- 查看collector_url
+	  ngx.log(ngx.ERR, "[cmcd init] Successfully set collector_url to: ", collector_url)
+	
     end
-	-- 查看collector_url
-	ngx.log(ngx.ERR, "[cmcd init] Successfully set collector_url to: ", collector_url)
 	
     math.randomseed(os.time())
 
