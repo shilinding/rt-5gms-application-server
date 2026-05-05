@@ -71,7 +71,9 @@ http {{
       end
       dict:set("cmcd_collector_url", collector_url)
     end
-
+	-- 查看collector_url
+	ngx.log(ngx.ERR, "[cmcd init] Successfully set collector_url to: ", collector_url)
+	
     math.randomseed(os.time())
 
     function re_escape(s)
