@@ -66,8 +66,15 @@ http {{
     if dict then
       -- 优先使用模板注入的 collector url，若为空，则提供默认的 fallback 地址
       local collector_url = "{cmcd_collector_url}"
-      if collector_url == nil or collector_url == "" then
+      if collector_url == nil 
+         or collector_url == "" 
+         or collector_url == "{cmcd_collector_url}" 
+         or string.lower(collector_url) == "none" 
+         or string.lower(collector_url) == "null" 
+         or string.lower(collector_url) == "nil" then
+         
         collector_url = "http://192.168.1.111:3000/cmcd/response-mode"
+		
       end
       dict:set("cmcd_collector_url", collector_url)
     end
