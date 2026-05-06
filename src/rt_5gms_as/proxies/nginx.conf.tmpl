@@ -124,6 +124,34 @@ http {{
     cmcdHandle = require "cmcd_response_json"
     ngx.log(ngx.ERR, "[cmcd] init_worker loaded type=", type(cmcdHandle))
   }}
+  
+  
+    -- ==========================================
+    -- 重新官方的生成nginx的源码
+    -- ==========================================
+    original_ngx_re_match = ngx.re.match
+
+    ngx.re.match = function(subject, regex, options, ctx, res)
+        -- 1. 照常执行原生的正则匹配
+        local matches, err = original_ngx_re_match(subject, regex, options, ctx, res)
+        
+        -- 2. 【核心逻辑】精准识别官方代码中那个导致崩溃的特定正则！
+        if not matches and regex == "(.*/)([^/].*)" then
+            ngx.log(ngx.WARN, "[HOTFIX] 捕获到官方重定向正则匹配失败！拦截崩溃，执行兜底重定向: ", tostring(subject))
+            
+            -- 获取上游传过来的真实状态码 (301/302)，如果没有就默认 302
+            local status = tonumber(ngx.var.upstream_status) or 302
+            
+            -- 【神来之笔】：直接在这里调用 ngx.redirect！
+            -- 在 OpenResty 中，ngx.redirect 会抛出一个特殊的底层中断异常，
+            -- 这意味着当前 Lua 脚本（包括官方生成的那些会崩溃的 matches[1] 赋值语句）
+            -- 会被立刻强制终止！客户端将直接收到安全的重定向响应。
+            return ngx.redirect(subject, status)
+        end
+        
+        -- 3. 对于其他所有模块的正则匹配，原样返回，绝对不干扰 Nginx 的正常运行！
+        return matches, err
+    end
 
 {server_configs}
 
