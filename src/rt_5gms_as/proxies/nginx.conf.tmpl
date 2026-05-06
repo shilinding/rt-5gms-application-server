@@ -95,14 +95,18 @@ http {{
 
   init_worker_by_lua_block {{
     
-	package.loaded["cmcd_response_json"] = nil
+	-- package.loaded["cmcd_response_json"] = nil
     -- 使用 pcall 安全加载脚本，防止脚本不存在导致 Nginx 崩溃
-    local ok, cmcdHandle = pcall(require, "cmcd_response_json")
-    if ok then
-       ngx.log(ngx.INFO, "[cmcd] init_worker successfully loaded cmcd_response_json")
-    else
-       ngx.log(ngx.ERR, "[cmcd] init_worker failed to load cmcd_response_json: ", cmcdHandle)
-    end
+    -- local ok, cmcdHandle = pcall(require, "cmcd_response_json")
+    -- if ok then
+    --   ngx.log(ngx.ERR, "[cmcd] init_worker successfully loaded cmcd_response_json")
+    -- else
+    --   ngx.log(ngx.ERR, "[cmcd] init_worker failed to load cmcd_response_json: ", cmcdHandle)
+    -- end
+	
+	package.loaded["cmcd_response_json"] = nil
+    cmcdHandle = require "cmcd_response_json"
+    ngx.log(ngx.ERR, "[cmcd] init_worker loaded type=", type(cmcdHandle))
   }}
 
 {server_configs}
