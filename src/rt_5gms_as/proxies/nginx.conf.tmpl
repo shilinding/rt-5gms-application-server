@@ -88,8 +88,14 @@ http {{
     math.randomseed(os.time())
 
     function re_escape(s)
+	  -- 如果传进来的是空值，直接返回空字符串，阻止崩溃！
+      if s == nil then
+          return ""
+      end
+      
       local ret = s:gsub("([]*^[%%.()])", "%%%1")
       return ret
+      
     end
   }}
 
