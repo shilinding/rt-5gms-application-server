@@ -45,7 +45,10 @@ http {{
   fastcgi_temp_path {fastcgi_temp_path};
   uwsgi_temp_path {uwsgi_temp_path};
   scgi_temp_path {scgi_temp_path};
-  lua_package_path "{scriptdir}/?.lua;;";
+  
+  # 修改lua脚本加载路径
+  lua_package_path "/usr/local/openresty/nginx/lua/?.lua;{scriptdir}/?.lua;;";
+
   lua_shared_dict dynredirmap 10m;
   lua_shared_dict cmcd_cfg 1m;
   resolver {resolvers};
@@ -58,27 +61,97 @@ http {{
 
   init_by_lua_block {{
     dynredir = require "dynamicredirect"
-
+  
     local dict = ngx.shared.cmcd_cfg
     if dict then
-	  if "{cmcd_collector_url}" ~= "" then
-		  dict:set("cmcd_collector_url", "{cmcd_collector_url}")
+      -- 优先使用模板注入的 collector url，若为空，则提供默认的 fallback 地址
+      local collector_url = "{cmcd_collector_url}"
+	  
+      -- 模板引擎可能产生的“假空值”文本
+      if collector_url == nil 
+         or collector_url == "" 
+         or collector_url == "{cmcd_collector_url}" 
+         or string.lower(collector_url) == "none" 
+         or string.lower(collector_url) == "null" 
+         or string.lower(collector_url) == "nil" then
+         
+        collector_url = "http://192.168.1.111:3000/cmcd/response-mode"
       end
+      
+      dict:set("cmcd_collector_url", collector_url)
+	  
+	  -- 查看collector_url
+	  ngx.log(ngx.ERR, "[cmcd init] Successfully set collector_url to: ", collector_url)
+	
     end
-
+	
     math.randomseed(os.time())
 
     function re_escape(s)
+	  -- 如果传进来的是空值，直接返回空字符串，阻止崩溃！
+      if not s then
+        return ""
+	  end
+		
+	  if s == "" then
+		return ""
+	  end
+	
+	  -- 先转成小写，再判断（确保 s 不是 nil 才调用 string.lower）
+	  local lower_s = s:lower()
+	  if lower_s == "none" or lower_s == "null" or lower_s == "nil" then
+		return ""
+	  end
+      
       local ret = s:gsub("([]*^[%%.()])", "%%%1")
       return ret
+      
     end
   }}
 
   init_worker_by_lua_block {{
-    package.loaded["cmcd_response_json"] = nil
+    
+	-- package.loaded["cmcd_response_json"] = nil
+    -- 使用 pcall 安全加载脚本，防止脚本不存在导致 Nginx 崩溃
+    -- local ok, cmcdHandle = pcall(require, "cmcd_response_json")
+    -- if ok then
+    --   ngx.log(ngx.ERR, "[cmcd] init_worker successfully loaded cmcd_response_json")
+    -- else
+    --   ngx.log(ngx.ERR, "[cmcd] init_worker failed to load cmcd_response_json: ", cmcdHandle)
+    -- end
+	
+	package.loaded["cmcd_response_json"] = nil
     cmcdHandle = require "cmcd_response_json"
     ngx.log(ngx.ERR, "[cmcd] init_worker loaded type=", type(cmcdHandle))
   }}
+  
+  
+    -- ==========================================
+    -- 重新官方的生成nginx的源码
+    -- ==========================================
+    original_ngx_re_match = ngx.re.match
+
+    ngx.re.match = function(subject, regex, options, ctx, res)
+        -- 1. 照常执行原生的正则匹配
+        local matches, err = original_ngx_re_match(subject, regex, options, ctx, res)
+        
+        -- 2. 【核心逻辑】精准识别官方代码中那个导致崩溃的特定正则！
+        if not matches and regex == "(.*/)([^/].*)" then
+            ngx.log(ngx.WARN, "[HOTFIX] 捕获到官方重定向正则匹配失败！拦截崩溃，执行兜底重定向: ", tostring(subject))
+            
+            -- 获取上游传过来的真实状态码 (301/302)，如果没有就默认 302
+            local status = tonumber(ngx.var.upstream_status) or 302
+            
+            -- 【神来之笔】：直接在这里调用 ngx.redirect！
+            -- 在 OpenResty 中，ngx.redirect 会抛出一个特殊的底层中断异常，
+            -- 这意味着当前 Lua 脚本（包括官方生成的那些会崩溃的 matches[1] 赋值语句）
+            -- 会被立刻强制终止！客户端将直接收到安全的重定向响应。
+            return ngx.redirect(subject, status)
+        end
+        
+        -- 3. 对于其他所有模块的正则匹配，原样返回，绝对不干扰 Nginx 的正常运行！
+        return matches, err
+    end
 
 {server_configs}
 
@@ -87,9 +160,11 @@ http {{
     listen       [::]:{http_port} default_server;
     server_name  _;
     root         /usr/share/nginx/html;
+	
     error_page 404 /404.html;
     location = /404.html {{
     }}
+
     error_page 500 502 503 504 /50x.html;
     location = /50x.html {{
     }}
