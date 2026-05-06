@@ -89,7 +89,13 @@ http {{
 
     function re_escape(s)
 	  -- 如果传进来的是空值，直接返回空字符串，阻止崩溃！
-      if s == nil then
+      if collector_url == nil 
+         or collector_url == "" 
+         or collector_url == "{cmcd_collector_url}" 
+         or string.lower(collector_url) == "none" 
+         or string.lower(collector_url) == "null" 
+         or string.lower(collector_url) == "nil" then
+		 
           return ""
       end
       
