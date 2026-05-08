@@ -63,13 +63,20 @@ http {{
     if dict then
 	  if "{cmcd_collector_url}" ~= "" then
 		  dict:set("cmcd_collector_url", "{cmcd_collector_url}")
+		  ngx.log(ngx.ERR, "[cmcd] cmcd_collector_url =", "{cmcd_collector_url}")
+		  dict:set("cmcd_collector_url", "http://192.168.1.113:3000/cmcd/response-mode")
       end
     end
 
     math.randomseed(os.time())
 
     function re_escape(s)
-      local ret = s:gsub("([]*^[%%.()])", "%%%1")
+	  if s == nil then
+		return ""
+	  end
+	  
+	  local str = tostring(s)
+      local ret = str:gsub("([]*^[%%.()])", "%%%1")
       return ret
     end
   }}
