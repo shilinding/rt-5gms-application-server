@@ -69,7 +69,12 @@ http {{
     math.randomseed(os.time())
 
     function re_escape(s)
-      local ret = s:gsub("([]*^[%%.()])", "%%%1")
+	  if s == nil then
+		return ""
+	  end
+	  
+	  local str = tostring(s)
+      local ret = str:gsub("([]*^[%%.()])", "%%%1")
       return ret
     end
   }}
