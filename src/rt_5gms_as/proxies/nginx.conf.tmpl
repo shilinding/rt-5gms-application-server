@@ -90,6 +90,26 @@ http {{
     cmcd_response = require "cmcd_response_json"
   }}
 
+  header_filter_by_lua_block {{
+    ngx.header["Access-Control-Allow-Origin"] = "*"
+    ngx.header["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+    ngx.header["Access-Control-Allow-Headers"] = "*"
+  }}
+
+  access_by_lua_block {{
+    if ngx.req.get_method() == "OPTIONS" then
+      ngx.header["Access-Control-Allow-Origin"] = "*"
+      ngx.header["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+      ngx.header["Access-Control-Allow-Headers"] = "*"
+      ngx.header["Access-Control-Max-Age"] = "86400"
+      ngx.exit(204)
+    end
+    -- CMCD handler
+    if cmcdHandle and cmcdHandle.handle then
+      cmcdHandle.handle()
+    end
+  }}
+
 {server_configs}
 
   server {{
