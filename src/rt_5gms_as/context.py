@@ -61,6 +61,8 @@ m3_port = 7777
 # Format: cmcd_collector_url = http://<collector-host>:<port>/cmcd/response-mode
 # e.g.: cmcd_collector_url = http://10.64.39.13:3000/cmcd/response-mode
 cmcd_collector_url = http://192.168.1.113:3000/cmcd/response-mode  
+cmcd_timeout_ms = 1000
+cmcd_lua_dir = .
 
 access_log = %(log_dir)s/application-server-access.log
 error_log = %(log_dir)s/application-server-error.log
